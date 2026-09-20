@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: mota_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: mota_scholarships
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mota_network
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: mota_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mota_network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: mota_backend_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/mota_scholarships
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CLIENT_URL=http://localhost:5173
+      - JWT_ACCESS_SECRET=mota_access_jwt_secret_tribal_scholarship_key_2026_india
+      - JWT_REFRESH_SECRET=mota_refresh_jwt_secret_tribal_scholarship_key_2026_india
+      - ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - USE_MOCKS=true
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - mota_network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: mota_frontend_pwa
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+    networks:
+      - mota_network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  mota_network:
+    driver: bridge
